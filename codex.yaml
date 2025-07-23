@@ -1,0 +1,7 @@
+name: Sandboxie
+git_ref: master
+image: universal
+
+setup:
+  run:
+    - echo "Setting up Sandboxie environment"
