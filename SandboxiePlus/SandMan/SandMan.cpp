@@ -3189,6 +3189,7 @@ SB_STATUS CSandMan::ReloadCert(QWidget* pWidget)
 
 	if (g_CertInfo.active)
 	{
+#ifdef _DEBUG
 		// behave as if there would be no certificate at all
 		if (theConf->GetBool("Debug/IgnoreCertificate", false))
 			g_CertInfo.State = 0;
@@ -3230,6 +3231,7 @@ SB_STATUS CSandMan::ReloadCert(QWidget* pWidget)
 			if (Level != -1)
 				g_CertInfo.level = Level;
 		}
+#endif
 	}
 
 	if (CERT_IS_TYPE(g_CertInfo, eCertBusiness))
