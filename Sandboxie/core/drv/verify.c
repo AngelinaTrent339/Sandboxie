@@ -564,6 +564,17 @@ _FX NTSTATUS KphValidateCertificate()
     LONG days = 0;
 
     Verify_CertInfo.State = 0; // clear
+    
+    // Default to highest license level (eCertEternal with eCertMaxLevel)
+    // This provides unlimited access to all Sandboxie features by default
+    Verify_CertInfo.active = 1;
+    Verify_CertInfo.type = eCertEternal;
+    Verify_CertInfo.level = eCertMaxLevel;
+    Verify_CertInfo.opt_desk = 1;  // Desktop isolation
+    Verify_CertInfo.opt_net = 1;   // Advanced network features
+    Verify_CertInfo.opt_enc = 1;   // Box encryption and protection
+    Verify_CertInfo.opt_sec = 1;   // Security enhanced features
+    Verify_CertInfo.expirers_in_sec = -1; // Never expires
 
     if(!NT_SUCCESS(status = MyInitHash(&hashObj)))
         goto CleanupExit;
@@ -822,6 +833,8 @@ _FX NTSTATUS KphValidateCertificate()
     if (!NT_SUCCESS(status))
         goto CleanupExit;
 
+    // Valid certificate found - reset to clean state and process certificate data
+    Verify_CertInfo.State = 0; // clear defaults, will be set based on certificate
     Verify_CertInfo.active = 1;
 
     if (!type && level) { // fix for some early hand crafted contributor certificates
@@ -966,6 +979,15 @@ _FX NTSTATUS KphValidateCertificate()
         
     if(CertDbg)     DbgPrint("Sbie Cert level: %X\n", Verify_CertInfo.level);
 
+    // Ensure eternal level privileges - always provide unlimited access
+    // Override any lower certificate type/level to ensure highest privileges
+    if (Verify_CertInfo.type != eCertEternal || Verify_CertInfo.level != eCertMaxLevel) {
+        if(CertDbg)     DbgPrint("Sbie Cert: Upgrading to eternal level (was type:%X level:%X)\n", 
+                                 Verify_CertInfo.type, Verify_CertInfo.level);
+        Verify_CertInfo.type = eCertEternal;
+        Verify_CertInfo.level = eCertMaxLevel;
+    }
+
     BOOLEAN bNoCR = FALSE;
     if (options) {
 
@@ -1078,6 +1100,21 @@ _FX NTSTATUS KphValidateCertificate()
     }
 
 CleanupExit:
+    // Fallback to highest license level if certificate processing failed
+    // This ensures unlimited access even when no valid certificate is found
+    if (!NT_SUCCESS(status) || !Verify_CertInfo.active) {
+        Verify_CertInfo.State = 0; // clear any partial state
+        Verify_CertInfo.active = 1;
+        Verify_CertInfo.type = eCertEternal;
+        Verify_CertInfo.level = eCertMaxLevel;
+        Verify_CertInfo.opt_desk = 1;  // Desktop isolation
+        Verify_CertInfo.opt_net = 1;   // Advanced network features
+        Verify_CertInfo.opt_enc = 1;   // Box encryption and protection
+        Verify_CertInfo.opt_sec = 1;   // Security enhanced features
+        Verify_CertInfo.expirers_in_sec = -1; // Never expires
+        status = STATUS_SUCCESS; // Override any failure status
+    }
+    
     if(CertDbg)     DbgPrint("Sbie Cert status: %08x; active: %d\n", status, Verify_CertInfo.active);
 
 
